@@ -2,14 +2,14 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import json
-import requests
+#import requests
 import traceback
 import plotly.graph_objects as go
 
 OLLAMA_URL = "http://localhost:11500"
 
 st.set_page_config(page_title="Chart Dashboard", layout="wide")
-st.title("AI Chart Dashboard")
+st.title("AI Chart Dashboard (Streamlit + Ollama)")
 
 # === Upload CSV ===
 uploaded_file = st.file_uploader("Upload your CSV data", type=["csv"])
@@ -17,7 +17,7 @@ if uploaded_file:
     df = pd.read_csv(uploaded_file)
     df.columns = df.columns.str.strip()
     st.success("Data loaded successfully!")
-    #st.dataframe(df.head(5))
+    st.dataframe(df.head(5))
 
     # === Persist chart specs in session state
     if "chart_specs" not in st.session_state:
@@ -34,7 +34,7 @@ if uploaded_file:
                 if isinstance(parsed_specs, dict):
                     parsed_specs = [parsed_specs]
                 st.session_state.chart_specs = parsed_specs
-                st.success("✅ JSON parsed and stored!")
+                st.success("JSON parsed and stored!")
             except Exception as e:
                 st.error(f"❌ Invalid JSON: {e}")
                 st.stop()
@@ -53,7 +53,7 @@ optional "filters": dict with column name and allowed values list
 Data Preview:
 {json.dumps(df_preview, indent=2)}
         """
-        if st.button("🧠 Ask Ollama to Generate Chart Spec"):
+        if st.button("Ask Ollama to Generate Chart Spec"):
             try:
                 with st.spinner("Calling Ollama..."):
                     response = requests.post(
@@ -71,7 +71,7 @@ Data Preview:
                     st.code(json.dumps(parsed_specs, indent=2), language="json")
                     st.success("✅ Chart spec generated and stored!")
             except Exception as e:
-                st.error("❌ Error calling Ollama:\n" + traceback.format_exc())
+                st.error("Error calling Ollama:\n" + traceback.format_exc())
                 st.stop()
 
     # === Chart rendering function
@@ -159,12 +159,11 @@ Data Preview:
 
         return fig
 
-    # === Apply per-chart filters using unique keys
     def apply_per_chart_filter(df, idx):
         chart_cats = df.select_dtypes(include=['object', 'category']).columns.tolist()
         filtered_df = df.copy()
 
-        with st.expander(f" Filters for Chart {idx + 1}"):
+        with st.expander(f"Filters for Chart {idx + 1}"):
             for cat in chart_cats:
                 unique_vals = df[cat].dropna().unique().tolist()
                 options = ["ALL"] + unique_vals
@@ -177,25 +176,59 @@ Data Preview:
 
         return filtered_df
 
-    # === Display charts: KPIs on left, others on right
+    # === Layout Selector ===
+    layout_choice = st.selectbox("📐 Select Layout", ["KPIs Left + Charts Right", "2 Charts per Row","3 Charts per row","All Full Width"])
+
+    # === Display charts based on layout
     chart_specs = st.session_state.get("chart_specs", [])
     if chart_specs:
         big_number_specs = [s for s in chart_specs if s.get("chart") == "big_number"]
         other_specs = [s for s in chart_specs if s.get("chart") != "big_number"]
 
-        left_col, right_col = st.columns([1, 2])
+        if layout_choice == "KPIs Left + Charts Right":
+            left_col, right_col = st.columns([1, 2])
 
-        with left_col:
-            for idx, spec in enumerate(big_number_specs):
-                fig = render_chart(spec, df)
-                if fig:
-                    st.plotly_chart(fig, use_container_width=True)
+            with left_col:
+                st.markdown("KEY PERFORMANCE INDICATORS")
+                for idx, spec in enumerate(big_number_specs):
+                    fig = render_chart(spec, df)
+                    if fig:
+                        st.plotly_chart(fig, use_container_width=True)
 
-        with right_col:
+            with right_col:
+                st.markdown("### 📊 Charts")
+                for idx, spec in enumerate(other_specs):
+                    st.markdown(f"##### 📊 {spec['chart'].capitalize()} Chart")
+                    filtered_df = apply_per_chart_filter(df, idx)
+                    fig = render_chart(spec, filtered_df)
+                    if fig:
+                        st.plotly_chart(fig, use_container_width=True)
+
+        elif layout_choice == "2 Charts per Row":
             st.markdown("### 📊 Charts")
-            for idx, spec in enumerate(other_specs):
+            cols = st.columns(2)
+            for idx, spec in enumerate(chart_specs):
+                with cols[idx % 2]:
+                    st.markdown(f"##### 📊 {spec['chart'].capitalize()} Chart")
+                    filtered_df = apply_per_chart_filter(df, idx) if spec['chart'] != "big_number" else df
+                    fig = render_chart(spec, filtered_df)
+                    if fig:
+                        st.plotly_chart(fig, use_container_width=True)
+        
+        elif layout_choice == "3 Charts per row":
+                st.markdown("### 📊 Charts")
+                cols = st.columns(3)
+                for idx, spec in enumerate(chart_specs):
+                    with cols[idx % 3]:
+                        st.markdown(f"##### 📊 {spec['chart'].capitalize()} Chart")
+                        filtered_df = apply_per_chart_filter(df, idx) if spec['chart'] != "big_number" else df
+                        fig = render_chart(spec, filtered_df)
+                        if fig:
+                            st.plotly_chart(fig, use_container_width=True)
+        elif layout_choice == "All Full Width":
+            for idx, spec in enumerate(chart_specs):
                 st.markdown(f"##### 📊 {spec['chart'].capitalize()} Chart")
-                filtered_df = apply_per_chart_filter(df, idx)
+                filtered_df = apply_per_chart_filter(df, idx) if spec['chart'] != "big_number" else df
                 fig = render_chart(spec, filtered_df)
                 if fig:
                     st.plotly_chart(fig, use_container_width=True)

@@ -1,0 +1,8 @@
+[
+{
+    "chart": "treemap",
+    "x": "Segment",
+    "y": "Sales",
+    "group": "Customer"
+  }
+]
