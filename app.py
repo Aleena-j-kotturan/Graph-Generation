@@ -1,40 +1,40 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import json
-#import requests
-import traceback
 import plotly.graph_objects as go
+import json
+import requests
+import traceback
 
 OLLAMA_URL = "http://localhost:11500"
 
-st.set_page_config(page_title="Chart Dashboard", layout="wide")
-st.title("AI Chart Dashboard (Streamlit + Ollama)")
+st.set_page_config(page_title="📊 Chart Dashboard", layout="wide")
+st.title("📊 AI Chart Dashboard with KPIs + Global Filters")
 
-# === Upload CSV ===
-uploaded_file = st.file_uploader("Upload your CSV data", type=["csv"])
+uploaded_file = st.file_uploader("📁 Upload your CSV data", type=["csv"])
+
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
     df.columns = df.columns.str.strip()
-    st.success("Data loaded successfully!")
+    st.success("✅ Data loaded successfully!")
     st.dataframe(df.head(5))
 
-    # === Persist chart specs in session state
     if "chart_specs" not in st.session_state:
         st.session_state.chart_specs = []
+    if "global_filter_cols" not in st.session_state:
+        st.session_state.global_filter_cols = []
 
-    # === Chart spec input ===
     chart_spec_option = st.radio("Choose chart spec method", ["Upload JSON file", "Generate using Ollama"])
 
     if chart_spec_option == "Upload JSON file":
         uploaded_json = st.file_uploader("📄 Upload your chart spec JSON", type=["json"])
         if uploaded_json and st.button("Generate Charts"):
             try:
-                parsed_specs = json.load(uploaded_json)
-                if isinstance(parsed_specs, dict):
-                    parsed_specs = [parsed_specs]
+                raw = json.load(uploaded_json)
+                st.session_state.global_filter_cols = list(raw.get("global_filters", {}).keys())
+                parsed_specs = raw.get("charts", raw if isinstance(raw, list) else [])
                 st.session_state.chart_specs = parsed_specs
-                st.success("JSON parsed and stored!")
+                st.success("✅ JSON parsed and stored!")
             except Exception as e:
                 st.error(f"❌ Invalid JSON: {e}")
                 st.stop()
@@ -43,17 +43,31 @@ if uploaded_file:
         prompt = f"""
 You are a chart specification assistant.
 
-Given a data preview, return a list of valid chart specification(s) in JSON format. Each spec should include:
-
-chart: one of "bar", "pie", "treemap", "line", "bubble", "waterfall", "big_number"
-x, y fields depending on chart
-optional "group" for color/lines
-optional "filters": dict with column name and allowed values list
+Return a JSON like:
+{{
+  "global_filters": {{
+    "Segment": [],
+    "Region": []
+  }},
+  "charts": [
+    {{
+      "chart": "kpi",
+      "label": "Total Sales",
+      "metric": "Sales",
+      "agg": "sum"
+    }},
+    {{
+      "chart": "bar",
+      "x": "Part",
+      "y": "Sales"
+    }}
+  ]
+}}
 
 Data Preview:
 {json.dumps(df_preview, indent=2)}
         """
-        if st.button("Ask Ollama to Generate Chart Spec"):
+        if st.button("🧠 Ask Ollama to Generate Chart Spec"):
             try:
                 with st.spinner("Calling Ollama..."):
                     response = requests.post(
@@ -62,56 +76,90 @@ Data Preview:
                     )
                     response.raise_for_status()
                     result = response.json()["response"]
+                    cleaned = result.replace("[PYTHON]", "").replace("[/PYTHON]", "").strip("`").replace("json", "").strip()
+                    parsed = json.loads(cleaned)
 
-                    cleaned = result.replace("[PYTHON]", "").replace("[/PYTHON]", "").strip()
-                    cleaned = cleaned.strip("").replace("json", "").strip()
-                    parsed_specs = json.loads(cleaned)
-
-                    st.session_state.chart_specs = parsed_specs
-                    st.code(json.dumps(parsed_specs, indent=2), language="json")
-                    st.success("✅ Chart spec generated and stored!")
+                    st.session_state.global_filter_cols = list(parsed.get("global_filters", {}).keys())
+                    st.session_state.chart_specs = parsed.get("charts", parsed if isinstance(parsed, list) else [])
+                    st.code(json.dumps(parsed, indent=2), language="json")
+                    st.success("✅ Spec generated and stored!")
             except Exception as e:
-                st.error("Error calling Ollama:\n" + traceback.format_exc())
+                st.error("❌ Error calling Ollama:\n" + traceback.format_exc())
                 st.stop()
 
-    # === Chart rendering function
-    def render_chart(spec, df):
-        spec.setdefault("group", None)
-        spec.setdefault("filters", {})
+    # ✅ Global Filters (Dropdown with "All")
+    def apply_global_filters(df, filter_columns):
+        filtered_df = df.copy()
+        if filter_columns:
+            with st.expander("🌍 Global Filters", expanded=True):
+                for col in filter_columns:
+                    if col in df.columns:
+                        values = sorted(df[col].dropna().unique().tolist())
+                        selected = st.selectbox(
+                            f"Select value for {col}:",
+                            options=["All"] + values,
+                            index=0,
+                            key=f"global_filter_{col}"
+                        )
+                        if selected != "All":
+                            filtered_df = filtered_df[filtered_df[col] == selected]
+        return filtered_df
 
-        group_col = spec.get("group")
-        if not group_col or group_col.strip() == "" or group_col not in df.columns:
-            group_col = None
+    # KPI Renderer
+    def render_kpi_cards(specs, df):
+        kpi_specs = [s for s in specs if s.get("chart") == "kpi"]
+        if not kpi_specs:
+            return
+        st.subheader("📌 Key Metrics")
+        cols = st.columns(len(kpi_specs))
+        for idx, spec in enumerate(kpi_specs):
+            metric = spec.get("metric")
+            label = spec.get("label", metric)
+            agg = spec.get("agg", "sum").lower()
+            value = None
+            if metric in df.columns:
+                if agg == "sum":
+                    value = df[metric].sum()
+                elif agg == "avg":
+                    value = df[metric].mean()
+                elif agg == "count":
+                    value = df[metric].count()
+                elif agg == "max":
+                    value = df[metric].max()
+                elif agg == "min":
+                    value = df[metric].min()
+            with cols[idx]:
+                st.metric(label=label, value=f"{value:,.2f}" if isinstance(value, (int, float)) else value)
 
-        fig = None
-        chart_type = spec.get("chart", "").lower()
+    # Chart Renderer
+    def render_chart(spec, data):
+        chart = spec.get("chart")
+        x = spec.get("x")
+        y = spec.get("y")
+        group = spec.get("group", None)
+        if group and group not in data.columns:
+            group = None
 
-        if chart_type == "bar":
-            fig = px.bar(df, x=spec["x"], y=spec["y"], color=group_col)
-
-        elif chart_type == "line":
-            fig = px.line(df, x=spec["x"], y=spec["y"], color=group_col)
-
-        elif chart_type == "pie":
-            fig = px.pie(df, names=spec["labels"], values=spec["values"])
-
-        elif chart_type == "treemap":
-            path = [group_col, spec["x"]] if group_col else [spec["x"]]
-            fig = px.treemap(df, path=path, values=spec["y"])
-
-        elif chart_type == "bubble":
-            fig = px.scatter(df, x=spec["x"], y=spec["y"], size=spec["size"], color=group_col)
-
-        elif chart_type == "waterfall":
-            fig = go.Figure(go.Waterfall(
+        if chart == "bar":
+            return px.bar(data, x=x, y=y, color=group)
+        elif chart == "line":
+            return px.line(data, x=x, y=y, color=group)
+        elif chart == "pie":
+            return px.pie(data, names=spec.get("labels"), values=spec.get("values"))
+        elif chart == "treemap":
+            path = [group, x] if group else [x]
+            return px.treemap(data, path=path, values=y)
+        elif chart == "bubble":
+            return px.scatter(data, x=x, y=y, size=spec.get("size"), color=group)
+        elif chart == "waterfall":
+            return go.Figure(go.Waterfall(
                 name="",
                 orientation="v",
                 x=spec["x"],
                 y=spec["y"],
                 measure=spec.get("measure", ["relative"] * len(spec["x"]))
             ))
-
-        elif chart_type == "big_number":
+        elif chart == "big_number":
             y_field = spec.get("y")
             agg = spec.get("aggregation", "sum").lower()
             title = spec.get("title", "Metric")
@@ -133,8 +181,6 @@ Data Preview:
                 except Exception as e:
                     st.warning(f"⚠️ Could not compute value for '{y_field}' with aggregation '{agg}': {e}")
                     value = None
-            else:
-                st.warning(f"⚠️ '{y_field}' not found in uploaded data columns.")
 
             if value is None or pd.isna(value):
                 value = 0
@@ -155,80 +201,59 @@ Data Preview:
                     "decreasing": {"color": "red"}
                 }
 
-            fig = go.Figure(go.Indicator(**indicator_args))
+            return go.Figure(go.Indicator(**indicator_args))
 
-        return fig
+        else:
+            return None
 
-    def apply_per_chart_filter(df, idx):
-        chart_cats = df.select_dtypes(include=['object', 'category']).columns.tolist()
-        filtered_df = df.copy()
-
-        with st.expander(f"Filters for Chart {idx + 1}"):
-            for cat in chart_cats:
-                unique_vals = df[cat].dropna().unique().tolist()
-                options = ["ALL"] + unique_vals
-                pretty_name = cat.replace("_", " ").strip().title()
-
-                selected = st.selectbox(pretty_name, options, key=f"{cat}_{idx}")
-
-                if selected and selected != "ALL":
-                    filtered_df = filtered_df[filtered_df[cat] == selected]
-
-        return filtered_df
-
-    # === Layout Selector ===
-    layout_choice = st.selectbox("📐 Select Layout", ["KPIs Left + Charts Right", "2 Charts per Row","3 Charts per row","All Full Width"])
-
-    # === Display charts based on layout
+    # Layout and display charts
+    layout_choice = st.selectbox("📐 Select Layout", ["Auto Grid (2 per row)", "All Full Width", "1 Top + 2 Below", "2x2 Grid"])
     chart_specs = st.session_state.get("chart_specs", [])
+    global_cols = st.session_state.get("global_filter_cols", [])
+
     if chart_specs:
-        big_number_specs = [s for s in chart_specs if s.get("chart") == "big_number"]
-        other_specs = [s for s in chart_specs if s.get("chart") != "big_number"]
+        filtered_df = apply_global_filters(df, global_cols)
+        render_kpi_cards(chart_specs, filtered_df)
+        chart_specs = [s for s in chart_specs if s.get("chart") != "kpi"]
 
-        if layout_choice == "KPIs Left + Charts Right":
-            left_col, right_col = st.columns([1, 2])
+        st.markdown("---")
+        st.subheader("📊 Dashboard")
+        num_charts = len(chart_specs)
 
-            with left_col:
-                st.markdown("KEY PERFORMANCE INDICATORS")
-                for idx, spec in enumerate(big_number_specs):
-                    fig = render_chart(spec, df)
-                    if fig:
-                        st.plotly_chart(fig, use_container_width=True)
-
-            with right_col:
-                st.markdown("### 📊 Charts")
-                for idx, spec in enumerate(other_specs):
-                    st.markdown(f"##### 📊 {spec['chart'].capitalize()} Chart")
-                    filtered_df = apply_per_chart_filter(df, idx)
-                    fig = render_chart(spec, filtered_df)
-                    if fig:
-                        st.plotly_chart(fig, use_container_width=True)
-
-        elif layout_choice == "2 Charts per Row":
-            st.markdown("### 📊 Charts")
+        if layout_choice == "Auto Grid (2 per row)":
             cols = st.columns(2)
             for idx, spec in enumerate(chart_specs):
                 with cols[idx % 2]:
-                    st.markdown(f"##### 📊 {spec['chart'].capitalize()} Chart")
-                    filtered_df = apply_per_chart_filter(df, idx) if spec['chart'] != "big_number" else df
+                    st.markdown(f"**{spec.get('chart', '').capitalize()} Chart**")
                     fig = render_chart(spec, filtered_df)
                     if fig:
                         st.plotly_chart(fig, use_container_width=True)
-        
-        elif layout_choice == "3 Charts per row":
-                st.markdown("### 📊 Charts")
-                cols = st.columns(3)
-                for idx, spec in enumerate(chart_specs):
-                    with cols[idx % 3]:
-                        st.markdown(f"##### 📊 {spec['chart'].capitalize()} Chart")
-                        filtered_df = apply_per_chart_filter(df, idx) if spec['chart'] != "big_number" else df
-                        fig = render_chart(spec, filtered_df)
-                        if fig:
-                            st.plotly_chart(fig, use_container_width=True)
+       
         elif layout_choice == "All Full Width":
             for idx, spec in enumerate(chart_specs):
-                st.markdown(f"##### 📊 {spec['chart'].capitalize()} Chart")
-                filtered_df = apply_per_chart_filter(df, idx) if spec['chart'] != "big_number" else df
+                st.markdown(f"**{spec.get('chart', '').capitalize()} Chart**")
                 fig = render_chart(spec, filtered_df)
                 if fig:
                     st.plotly_chart(fig, use_container_width=True)
+
+        elif layout_choice == "1 Top + 2 Below":
+            if num_charts >= 1:
+                st.plotly_chart(render_chart(chart_specs[0], filtered_df), use_container_width=True)
+            if num_charts > 1:
+                cols = st.columns(2)
+                for i in range(1, min(num_charts, 3)):
+                    with cols[i - 1]:
+                        st.plotly_chart(render_chart(chart_specs[i], filtered_df), use_container_width=True)
+
+        elif layout_choice == "2x2 Grid":
+            rows = (num_charts + 1) // 2
+            for i in range(rows):
+                cols = st.columns(2)
+                for j in range(2):
+                    idx = i * 2 + j
+                    if idx < num_charts:
+                        with cols[j]:
+                            st.markdown(f"**{chart_specs[idx]['chart'].capitalize()} Chart**")
+                            fig = render_chart(chart_specs[idx], filtered_df)
+                            if fig:
+                                st.plotly_chart(fig, use_container_width=True)
