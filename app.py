@@ -159,52 +159,7 @@ Data Preview:
                 y=spec["y"],
                 measure=spec.get("measure", ["relative"] * len(spec["x"]))
             ))
-        elif chart == "big_number":
-            y_field = spec.get("y")
-            agg = spec.get("aggregation", "sum").lower()
-            title = spec.get("title", "Metric")
-            delta = spec.get("delta")
-
-            value = None
-            if y_field and y_field in df.columns:
-                try:
-                    if agg == "sum":
-                        value = df[y_field].sum()
-                    elif agg in ["avg", "mean"]:
-                        value = df[y_field].mean()
-                    elif agg == "count":
-                        value = df[y_field].count()
-                    elif agg == "max":
-                        value = df[y_field].max()
-                    elif agg == "min":
-                        value = df[y_field].min()
-                except Exception as e:
-                    st.warning(f"⚠️ Could not compute value for '{y_field}' with aggregation '{agg}': {e}")
-                    value = None
-
-            if value is None or pd.isna(value):
-                value = 0
-
-            indicator_args = {
-                "mode": "number+delta" if delta else "number",
-                "value": value,
-                "title": {"text": title},
-                "number": {"font": {"size": 48}}
-            }
-
-            if delta:
-                indicator_args["delta"] = {
-                    "reference": delta,
-                    "relative": True,
-                    "valueformat": ".1%",
-                    "increasing": {"color": "green"},
-                    "decreasing": {"color": "red"}
-                }
-
-            return go.Figure(go.Indicator(**indicator_args))
-
-        else:
-            return None
+        return None
 
     # Layout and display charts
     layout_choice = st.selectbox("📐 Select Layout", ["Auto Grid (2 per row)", "All Full Width", "1 Top + 2 Below", "2x2 Grid"])
@@ -228,7 +183,7 @@ Data Preview:
                     fig = render_chart(spec, filtered_df)
                     if fig:
                         st.plotly_chart(fig, use_container_width=True)
-       
+
         elif layout_choice == "All Full Width":
             for idx, spec in enumerate(chart_specs):
                 st.markdown(f"**{spec.get('chart', '').capitalize()} Chart**")
