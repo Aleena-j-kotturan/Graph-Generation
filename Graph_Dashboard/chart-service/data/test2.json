@@ -1,0 +1,37 @@
+{
+  "global_filters": {
+    "Sub-Segment": [],
+    "Region": []
+  },
+  "charts": [
+    {
+      "chart": "kpi",
+      "label": "Total Sales for 2023",
+      "metric": "2023 Sales (CS + SO)",
+      "agg": "sum"
+    },
+    {
+      "chart": "bar",
+      "x": "Region",
+      "y": "2023 Sales (CS + SO)"
+    },
+    {
+      "chart": "treemap",
+      "x": "Sub-Segment",
+      "y": "2023 + 2024 Full Year (Sales)",
+      "group": "Customer Name"
+    },
+    {
+      "chart": "line",
+      "x": "Region",
+      "y": "EBU Margin % (CS + SO) (2024>2023)"
+    },
+    {
+      "chart": "bubble",
+      "x": "2024 H2 Prod ID Price",
+      "y": "2023 + 2024 Full Year (Sales)",
+      "size": "Total DBU Margin (KALMAR)",
+      "group": "Region"
+    }
+  ]
+}

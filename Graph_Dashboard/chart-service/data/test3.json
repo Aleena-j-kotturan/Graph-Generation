@@ -1,0 +1,64 @@
+{
+  "global_filters": {
+    "Segment": [],
+    "Region": []
+  },
+  "charts": [
+    {
+      "chart": "pie",
+      "labels": "Customer",
+      "values": "Sales",
+      "font": {
+        "family": "Arial",
+        "size": 14,
+        "color": "black"
+      }
+    },
+    {
+    "chart": "bar",
+    "x": "Part",
+    "y": "Sales",
+    "colorSequence":["purple"],
+    "font": {
+      "family": "Arial",
+      "size": 14,
+      "color": "black"
+  }
+},
+    {
+      "chart": "treemap",
+      "x": "Segment",
+      "y": "Sales",
+      "group": "Customer",
+      "font": {
+        "family": "Times New Roman",
+        "size": 12,
+        "color": "black"
+      }
+    },
+    {
+      "chart": "line",
+      "x": "Part",
+      "y": "Sales",
+      "colorSequence": ["blue"],
+      "font": {
+        "family": "Helvetica",
+        "size": 14,
+        "color": "violet"
+      }
+    },
+    {
+      "chart": "bubble",
+      "x": "Qty",
+      "y": "Profit",
+      "size": "Sales",
+      "colorSequence": ["blue"],
+      "group": "Part",
+      "font": {
+        "family": "Times New Roman",
+        "size": 13,
+        "color": "blue"
+      }
+    }
+  ]
+}

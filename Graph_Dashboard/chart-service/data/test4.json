@@ -1,0 +1,14 @@
+{
+  "global_filters": {
+    "Segment": [],
+    "Region": []
+  },
+
+  "charts":[
+    {
+        "chart":"bar",
+        "x":"EmployeeID",
+        "y":"Salary"
+    }
+  ]
+}

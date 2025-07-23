@@ -1,0 +1,44 @@
+{
+  "global_filters": {
+    "Segment": [],
+    "Region": []
+  },
+  "charts": [
+    {
+      "chart": "kpi",
+      "label": "Total Sales",
+      "metric": "Sales",
+      "agg": "sum"
+    },
+    {
+       "chart": "kpi",
+      "label": "Avg Profit",
+      "metric": "Profit",
+      "agg": "avg"
+    },
+    
+    {
+      "chart": "bar",
+      "x": "Part",
+      "y": "Sales"
+    },
+    {
+      "chart": "treemap",
+      "x": "Segment",
+      "y": "Sales",
+      "group": "Customer"
+    },
+    {
+      "chart": "line",
+      "x": "Part",
+      "y": "Qty"
+    },
+    {
+      "chart": "bubble",
+      "x": "Qty",
+      "y": "Profit",
+      "size": "Sales",
+      "group": "Part"
+    }
+  ]
+}

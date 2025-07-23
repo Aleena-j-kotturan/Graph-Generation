@@ -1,0 +1,6 @@
+EmployeeID;FirstName;LastName;Email;Department;JoiningDate;Salary
+101;Alice;Johnson;alice.j@example.com;HR;2021-06-15;55000
+102;Bob;Smith;bob.smith@example.com;Engineering;2019-03-22;78000
+103;Charlie;Lee;charlie.lee@example.com;Marketing;2020-11-01;62000
+104;Diana;Cruz;diana.cruz@example.com;Finance;2018-01-30;69000
+105;Evan;Brown;evan.brown@example.com;Engineering;2023-02-10;72000
