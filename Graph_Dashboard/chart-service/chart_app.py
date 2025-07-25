@@ -14,7 +14,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 OLLAMA_URL = "http://localhost:11500"
 
 st.set_page_config(page_title="📊 Chart Dashboard", layout="wide")
-st.title("AI Chart Dashboard with KPIs + Global Filters")
+st.title("Chart Dashboard with KPIs + Global Filters")
 
 params = st.query_params
 csv_path = params.get("csv", "data/default.csv")
@@ -38,7 +38,6 @@ if csv_mod_time == 0:
     st.error(f"❌ CSV file not found: {csv_path}")
     st.stop()
 
-# Load CSV
 try:
     if delimiter:
         df = pd.read_csv(csv_path, sep=delimiter)
@@ -60,6 +59,7 @@ if "global_filter_cols" not in st.session_state:
 try:
     with open(json_path) as f:
         raw = json.load(f)
+    st.session_state.global_font = raw.get("global_font", {"family": "Arial", "size": 14, "color": "black"})
     st.session_state.global_filter_cols = list(raw.get("global_filters", {}).keys())
     parsed_specs = raw.get("charts", raw if isinstance(raw, list) else [])
     st.session_state.chart_specs = parsed_specs
@@ -103,9 +103,19 @@ def apply_global_filters(df, filter_columns):
             for col in filter_columns:
                 if col in df.columns:
                     values = sorted(df[col].dropna().unique().tolist())
-                    selected = st.selectbox(
-                        f"Select value for {col}:", ["All"] + values, index=0, key=f"global_filter_{col}"
-                    )
+                    selected = st.selectbox(f"Select value for {col}:", ["All"] + values, index=0, key=f"global_filter_{col}")
+                    if selected != "All":
+                        filtered_df = filtered_df[filtered_df[col] == selected]
+    return filtered_df
+
+def apply_individual_filters(df, chart_id, filter_columns):
+    filtered_df = df.copy()
+    if filter_columns:
+        #with st.expander(f"🎯 Filters for Chart {chart_id}", expanded=False):
+            for col in filter_columns:
+                if col in df.columns:
+                    values = sorted(df[col].dropna().unique().tolist())
+                    selected = st.selectbox(f"{col}", ["All"] + values, index=0, key=f"individual_filter_{chart_id}_{col}")
                     if selected != "All":
                         filtered_df = filtered_df[filtered_df[col] == selected]
     return filtered_df
@@ -132,6 +142,7 @@ def render_kpi_cards(specs, df):
                 value = df[metric].max()
             elif agg == "min":
                 value = df[metric].min()
+            
         with cols[idx]:
             st.metric(label=label, value=f"{value:,.2f}" if isinstance(value, (int, float)) else value)
 
@@ -157,8 +168,10 @@ def render_chart(spec, data):
     x = spec.get("x")
     y = spec.get("y")
     group = spec.get("group") if spec.get("group") in data.columns else None
-    font = spec.get("font", {"family": "Arial", "size": 14, "color": "black"})
+    default_font = st.session_state.get("global_font", {"family": "Arial", "size": 14, "color": "black"})
+    font = spec.get("font", default_font)
     color_sequence = resolve_color_sequence(spec.get("colorSequence", [])) if spec.get("colorSequence") else None
+    show_legend = spec.get("showLegend", True)  # 🔸 Read legend flag (default True)
 
     if chart == "bar":
         fig = px.bar(data, x=x, y=y, color=group, color_discrete_sequence=color_sequence)
@@ -172,13 +185,37 @@ def render_chart(spec, data):
     elif chart == "bubble":
         fig = px.scatter(data, x=x, y=y, size=spec.get("size"), color=group, color_discrete_sequence=color_sequence)
     elif chart == "waterfall":
-        fig = go.Figure(go.Waterfall(x=spec["x"], y=spec["y"], measure=spec.get("measure", ["relative"] * len(spec["x"]))))
-        fig.update_layout(title=spec.get("title", ""), font=font)
+        fig = go.Figure(go.Waterfall(
+            x=spec["x"],
+            y=spec["y"],
+            measure=spec.get("measure", ["relative"] * len(spec["x"]))
+        ))
+        fig.update_layout(title=spec.get("title", ""), font=font, showlegend=show_legend)  # 🔹 Add legend here too
         return fig
+    elif chart == "area":
+        area_mode = spec.get("mode", "stack")
+        opacity = spec.get("opacity", 0.7)
+        line_shape = "spline" if spec.get("lineSmoothing", False) else "linear"
+        sort_x = spec.get("sortX", False)
+
+        if sort_x and x in data.columns:
+            data = data.sort_values(by=x)
+            fig = px.area(
+                data,
+                x=x,
+                y=y,
+                color=group,
+                line_shape=line_shape,
+                color_discrete_sequence=color_sequence,
+                groupnorm="percent" if area_mode == "percent" else None
+            )
+            fig.update_traces(opacity=opacity, stackgroup="one" if area_mode == "stack" else None)
+
     else:
         return None
 
-    fig.update_layout(title=spec.get("title", ""), font=font)
+    # 🔸 Apply title, font, and legend for all charts
+    fig.update_layout(title=spec.get("title", ""), font=font, showlegend=show_legend)
     return fig
 
 layout_options = ["Auto Grid (2 per row)", "All Full Width", "1 Top + 2 Below"]
@@ -209,28 +246,40 @@ if chart_specs:
         cols = st.columns(2)
         for i, spec in enumerate(chart_specs):
             with cols[i % 2]:
-                st.markdown(f"**{get_chart_title(spec)}**")
-                fig = render_chart(spec, filtered_df)
-                if fig: st.plotly_chart(fig, use_container_width=True)
+                chart_id = f"{spec.get('chart')}_{i}"
+                individual_filter_cols = spec.get("filters", [])
+                filtered_df_chart = apply_individual_filters(filtered_df, chart_id, individual_filter_cols)
+                fig = render_chart(spec, filtered_df_chart)
+                if fig:
+                    st.plotly_chart(fig, use_container_width=True)
     elif layout_choice == "All Full Width":
-        for spec in chart_specs:
-            st.markdown(f"**{get_chart_title(spec)}**")
-            fig = render_chart(spec, filtered_df)
-            if fig: st.plotly_chart(fig, use_container_width=True)
+        for i, spec in enumerate(chart_specs):
+            chart_id = f"{spec.get('chart')}_{i}"
+            individual_filter_cols = spec.get("filters", [])
+            filtered_df_chart = apply_individual_filters(filtered_df, chart_id, individual_filter_cols)
+            fig = render_chart(spec, filtered_df_chart)
+            if fig:
+                st.plotly_chart(fig, use_container_width=True)
     elif layout_choice == "1 Top + 2 Below":
         if num_charts > 0:
-            st.markdown(f"**{get_chart_title(chart_specs[0])}**")
-            st.plotly_chart(render_chart(chart_specs[0], filtered_df), use_container_width=True)
+            chart_id = f"{chart_specs[0].get('chart')}_0"
+            individual_filter_cols = chart_specs[0].get("filters", [])
+            filtered_df_chart = apply_individual_filters(filtered_df, chart_id, individual_filter_cols)
+            st.plotly_chart(render_chart(chart_specs[0], filtered_df_chart), use_container_width=True)
         if num_charts > 1:
             cols = st.columns(2)
             for i in range(1, min(num_charts, 3)):
                 with cols[i - 1]:
-                    st.markdown(f"**{get_chart_title(chart_specs[i])}**")
-                    st.plotly_chart(render_chart(chart_specs[i], filtered_df), use_container_width=True)
+                    chart_id = f"{chart_specs[i].get('chart')}_{i}"
+                    individual_filter_cols = chart_specs[i].get("filters", [])
+                    filtered_df_chart = apply_individual_filters(filtered_df, chart_id, individual_filter_cols)
+                    st.plotly_chart(render_chart(chart_specs[i], filtered_df_chart), use_container_width=True)
         for i in range(3, num_charts, 2):
             cols = st.columns(2)
             for j in range(2):
                 if i + j < num_charts:
                     with cols[j]:
-                        st.markdown(f"**{get_chart_title(chart_specs[i + j])}**")
-                        st.plotly_chart(render_chart(chart_specs[i + j], filtered_df), use_container_width=True)
+                        chart_id = f"{chart_specs[i + j].get('chart')}_{i + j}"
+                        individual_filter_cols = chart_specs[i + j].get("filters", [])
+                        filtered_df_chart = apply_individual_filters(filtered_df, chart_id, individual_filter_cols)
+                        st.plotly_chart(render_chart(chart_specs[i + j], filtered_df_chart), use_container_width=True)

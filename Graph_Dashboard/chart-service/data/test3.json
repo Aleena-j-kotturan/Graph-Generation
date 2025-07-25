@@ -3,62 +3,69 @@
     "Segment": [],
     "Region": []
   },
+  "global_font": {
+    "family": "Arial",
+    "size": 10,
+    "color": "black"
+  },
   "charts": [
     {
       "chart": "pie",
       "labels": "Customer",
+      "title": "Sales Distribution by Customer",
       "values": "Sales",
-      "font": {
-        "family": "Arial",
-        "size": 14,
-        "color": "black"
-      }
+      "filters": ["Region"],
+      "showLegend": true
     },
     {
-    "chart": "bar",
-    "x": "Part",
-    "y": "Sales",
-    "colorSequence":["purple"],
-    "font": {
-      "family": "Arial",
-      "size": 14,
-      "color": "black"
-  }
-},
+      "chart": "bar",
+      "x": "Part",
+      "title": "Part vs Sales",
+      "y": "Sales",
+      "filters": ["Segment"],
+      "showLegend": true
+    },
     {
       "chart": "treemap",
       "x": "Segment",
-      "y": "Sales",
+      "y": "Qty",
+      "title": "Sales by Segment and Customer",
       "group": "Customer",
-      "font": {
-        "family": "Times New Roman",
-        "size": 12,
-        "color": "black"
-      }
+      "showLegend": true
     },
     {
-      "chart": "line",
-      "x": "Part",
-      "y": "Sales",
-      "colorSequence": ["blue"],
-      "font": {
-        "family": "Helvetica",
-        "size": 14,
-        "color": "violet"
-      }
-    },
+    "chart": "line",
+    "x": "Part",
+    "y": "Sales",
+    "title": "Part vs Sales",
+    "filters": ["Region"],
+    "group": "Region",       
+    "showLegend": true
+  },
+  {
+  "chart": "area",
+  "x": "Part",
+  "y": "Sales",
+  "group": "Region",
+  "title": "Sales Trend by Part and Region",
+  "colorSequence": ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"],
+  "showLegend": true,
+  "mode": "stack",               
+  "opacity": 0.7,                
+  "lineSmoothing": true,        
+  "sortX": true,                 
+  "filters": ["Segment", "Customer", "Channel", "Category"]  
+},
+
     {
       "chart": "bubble",
       "x": "Qty",
       "y": "Profit",
       "size": "Sales",
-      "colorSequence": ["blue"],
-      "group": "Part",
-      "font": {
-        "family": "Times New Roman",
-        "size": 13,
-        "color": "blue"
-      }
+      "title": "Profit vs Quantity by Part (Bubble Size = Sales)",
+      "filters": ["Customer"],
+      "group": "Customer",
+      "showLegend": true
     }
   ]
 }

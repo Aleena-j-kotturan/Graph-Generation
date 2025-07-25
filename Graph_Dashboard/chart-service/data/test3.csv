@@ -1,7 +1,23 @@
-﻿Part ,Engine Model,Customer ,Sales,Certification,Segment,Profit,Qty
-A1234,BS-3,Bosch,100,Tier 1,Agriculture,10%,100
-A1235,BS-6,sim,200,Tier 2,Marine,30%,20
-A1236,BS-1,Cummins,300,Tier 1,Agriculture,40%,300
-A1237,BS-2,Cummins,400,Tier 2,Industry,10%,40
-A1238,BS-1,Sim,700,Tier 1,Marine,60%,50
-A1239,BS-2,Sim,500,Tier 4,Industry,10%,500
+﻿Part,Engine Model,Customer,Sales,Certification,Segment,Profit,Qty,Region,Date,Category,Channel,Quantity,Market Share %,Status
+A1234,BS-3,Sim,500,Tier 1,Agriculture,137.45,100,Us,1/1/2024,Engine,Dealer,5,22.5,New
+A1235,BS-6,Bosch,800,Tier 2,Marine,219.93,20,Uk,1/2/2024,Engine,Online,8,18.76,Backordered
+A1236,BS-1,Cummins,300,Tier 1,Agriculture,82.47,300,China,1/3/2024,Body,Dealer,3,6.37,Discontinued
+A1237,BS-2,Cummins,400,Tier 2,Industry,109.96,40,China,1/4/2024,Electrical,Export,4,6.37,Backordered
+A1238,BS-1,Sim,700,Tier 1,Marine,192.44,50,Uk,1/5/2024,Electrical,Dealer,7,3.63,New
+A1239,BS-2,Sim,500,Tier 4,Industry,137.45,500,Us,1/6/2024,Electrical,Online,5,26.25,Discontinued
+A1240,BS-3,Bosch,905,Tier 3,Agriculture,248.79,870,Uk,1/7/2024,Engine,Online,9,18.83,New
+A1241,BS-4,Sim,620,Tier 1,Industry,170.44,300,China,1/8/2024,Cooling,Export,6,21.83,Backordered
+A1242,BS-5,Bosch,480,Tier 2,Marine,131.96,120,Us,1/9/2024,Engine,Dealer,4,2.58,Discontinued
+A1243,BS-1,Cummins,330,Tier 1,Agriculture,90.72,220,Us,1/10/2024,Cooling,Dealer,3,29.16,Backordered
+A1244,BS-6,Sim,700,Tier 3,Marine,192.44,110,Uk,1/11/2024,Transmission,Dealer,7,25.31,Backordered
+A1245,BS-3,Bosch,845,Tier 2,Industry,232.3,430,China,1/12/2024,Engine,Online,8,7.95,Discontinued
+A1246,BS-2,Cummins,290,Tier 1,Marine,79.72,80,Us,1/13/2024,Engine,Online,2,7.09,Backordered
+A1247,BS-1,Sim,700,Tier 4,Agriculture,192.44,260,China,1/14/2024,Engine,Dealer,7,7.14,New
+A1248,BS-4,Bosch,750,Tier 1,Industry,206.18,640,Us,1/15/2024,Electrical,Online,7,10.52,Backordered
+A1249,BS-5,Cummins,670,Tier 2,Marine,184.19,310,Uk,1/16/2024,Electrical,Online,6,16.69,New
+A1250,BS-3,Sim,0,Tier 3,Agriculture,0,390,Uk,1/17/2024,Cooling,Dealer,0,14.09,New
+A1251,BS-6,Bosch,910,Tier 1,Industry,250.17,410,China,1/18/2024,Cooling,Online,9,10.15,Backordered
+A1252,BS-1,Cummins,610,Tier 2,Marine,167.69,230,Us,1/19/2024,Engine,Dealer,6,19.13,New
+A1253,BS-2,Sim,150,Tier 3,Agriculture,41.24,140,Uk,1/20/2024,Cooling,Dealer,1,5.91,Discontinued
+A1254,BS-4,Bosch,800,Tier 1,Industry,219.93,760,China,1/21/2024,Electrical,Export,8,10.18,New
+A1255,BS-5,Cummins,690,Tier 2,Marine,189.69,510,China,1/22/2024,Cooling,Dealer,7,12.26,New
